@@ -1,0 +1,19 @@
+{
+  "key.satella.toggle": "Toggle Auto Trade",
+  "key.satella.mode": "Switch Trade Mode",
+  "key.category.satella": "Auto Trade",
+  "satella.title.configs": "愛してる...愛してる...愛してる......",
+  "satella.config.betterCrossbow": "Better Crossbow",
+  "satella.config.betterCrossbowInterval": "Better Crossbow Interval",
+  "satella.config.serverShulkerCompat": "Server Quick Shulker Compatibility",
+  "satella.config.residualCrafting": "Residual Crafting",
+  "satella.config.autoCrafting": "Automatic Crafting",
+  "satella.config.autoCraftingKey": "Toggle Automatic Crafting",
+  "satella.glint_shape.cool": "Cool",
+  "satella.glint_shape.default": "Default",
+  "satella.trident_mode.tool_first": "Tool First",
+  "satella.trident_mode.interactable_first": "Interactable Block First",
+  "satella.trident_mode.place_first": "Place Block First",
+  "satella.offhand_food.flight_first": "Riptide First",
+  "satella.offhand_food.eat_first": "Eat First"
+}

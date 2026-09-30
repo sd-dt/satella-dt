@@ -1,0 +1,19 @@
+{
+  "key.satella.toggle": "开启/关闭自动交易",
+  "key.satella.mode": "切换交易模式",
+  "key.category.satella": "自动交易",
+  "satella.title.configs": "愛してる...愛してる...愛してる......",
+  "satella.config.betterCrossbow": "更NB的弩",
+  "satella.config.betterCrossbowInterval": "更NB的弩周期",
+  "satella.config.serverShulkerCompat": "服务器快捷潜影盒兼容",
+  "satella.config.residualCrafting": "残差合成",
+  "satella.config.autoCrafting": "全自动合成",
+  "satella.config.autoCraftingKey": "全自动合成开关键",
+  "satella.glint_shape.cool": "炫酷",
+  "satella.glint_shape.default": "默认",
+  "satella.trident_mode.tool_first": "工具优先",
+  "satella.trident_mode.interactable_first": "可交互方块优先",
+  "satella.trident_mode.place_first": "放置方块优先",
+  "satella.offhand_food.flight_first": "优先激流",
+  "satella.offhand_food.eat_first": "优先进食"
+}
