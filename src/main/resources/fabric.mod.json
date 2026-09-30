@@ -2,9 +2,14 @@
   "schemaVersion": 1,
   "id": "satella",
   "version": "${version}",
-  "name": "Satella",
-  "description": "Automatically trade and craft with residual crafting support.",
-  "authors": ["PetraSM"],
+  "name": "satella-dt",
+  "description": "Satella 修改版（satella-dt）：自动交易、全自动合成/切石、物品保护、三叉戟三模式交互、副手食物、附魔光效、/st 定位器。GitHub: https://github.com/sd-dt/satella-dt",
+  "authors": ["sd_dt", "PetraSM", "deepseekfl4.1"],
+  "contact": {
+    "homepage": "https://github.com/sd-dt/satella-dt",
+    "sources": "https://github.com/sd-dt/satella-dt",
+    "issues": "https://github.com/sd-dt/satella-dt/issues"
+  },
 	"icon": "assets/satella/icon.png",
   "environment": "client",
   "entrypoints": {
@@ -21,10 +26,5 @@
   },
   "suggests": {
     "modmenu": "*"
-  },
-  "custom": {
-    "modmenu": {
-      "parent": "satella-wrapper"
-    }
   }
 }

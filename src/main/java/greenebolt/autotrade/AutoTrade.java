@@ -55,7 +55,7 @@ public final class AutoTrade implements ModInitializer, IKeybindProvider, IHotke
         greenebolt.autotrade.stlocator.StLocator.init(
                 net.fabricmc.loader.api.FabricLoader.getInstance().getConfigDir().resolve("satella"));
         greenebolt.autotrade.stlocator.StCommands.register();
-        Registry.CONFIG_SCREEN.registerConfigScreenFactory(new ModInfo(MOD_ID, "Satella", AutoTradeConfigGui::new));
+        Registry.CONFIG_SCREEN.registerConfigScreenFactory(new ModInfo(MOD_ID, "satella-dt", AutoTradeConfigGui::new));
         AutoTradeConfigs.Trade.TOGGLE_KEY.getKeybind().setCallback(this);
         AutoTradeConfigs.Trade.MODE_KEY.getKeybind().setCallback(this);
         AutoTradeConfigs.Trade.AUTOMATION_KEY.getKeybind().setCallback(this);
