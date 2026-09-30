@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "id": "satella",
+  "version": "${version}",
+  "name": "Satella",
+  "description": "Automatically trade and craft with residual crafting support.",
+  "authors": ["PetraSM"],
+	"icon": "assets/satella/icon.png",
+  "environment": "client",
+  "entrypoints": {
+    "main": ["greenebolt.autotrade.AutoTrade"],
+    "modmenu": ["greenebolt.autotrade.compat.ModMenuIntegration"]
+  },
+  "mixins": ["satella.mixins.json"],
+  "depends": {
+    "fabricloader": ">=0.19.3",
+    "minecraft": "~26.2-",
+    "java": ">=21",
+    "fabric-api": "*",
+    "malilib": ">=0.29.2- <0.30.0-"
+  },
+  "suggests": {
+    "modmenu": "*"
+  },
+  "custom": {
+    "modmenu": {
+      "parent": "satella-wrapper"
+    }
+  }
+}
