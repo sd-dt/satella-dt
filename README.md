@@ -8,7 +8,7 @@
 
 自动交易 · 全自动合成/切石 · 物品保护 · 更NB的弩 · 三叉戟三模式交互 · 副手食物 · 附魔光效 · `/st` 定位器
 
-当前版本：**1.0.0+mc26.2** ｜ 游戏版本：Minecraft **26.2** + Fabric ｜ 许可：**MIT** ｜ 更新：2026-10-01
+当前版本：**1.0.0+mc26.2** ｜ 游戏版本：Minecraft **26.2** + Fabric ｜ 许可：**CC0-1.0** ｜ 更新：2026-10-01
 
 仓库地址：`https://github.com/sd-dt/satella-dt`
 
@@ -136,4 +136,4 @@ Gradle wrapper 指向腾讯镜像（`mirrors.cloud.tencent.com`），首次构�
 
 * 原始模组 **Satella**：作者 **PetraSM**（本仓库基于 `satella-mc26.2-1.0.0+mc26.2` 修改）
 * 本改版维护：**sd_dt**、**deepseekfl4.1**
-* 本项目沿用原模组许可：**MIT**，可自由使用、修改、再分发，但请保留署名与许可声明。
+* 本项目沿用原模组许可：**CC0-1.0**（Creative Commons Zero v1.0 Universal，公有领域奉献）。你可以自由使用、修改、再分发，无需授权；署名不是强制要求，但保留原作者署名更合适。
