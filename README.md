@@ -96,7 +96,7 @@
 1. 需要 Minecraft **26.2** + Fabric Loader（≥ 0.19.3）。
 2. 必需依赖：[Fabric API](https://modrinth.com/mod/fabric-api)、[MaLiLib](https://modrinth.com/mod/malilib)（`>= 0.29.2- < 0.30.0-`，配置界面与热键框架）。
 3. 可选依赖：[Mod Menu](https://modrinth.com/mod/modmenu)（配置入口）、[Item Scroller](https://modrinth.com/mod/item-scroller) / [Tweakeroo](https://modrinth.com/mod/tweakeroo) / Inventory Profiles Next（只影响「服务器快捷潜影盒兼容」这一项）。
-4. 把 `satella-mc26.2-1.0.0+mc26.2.jar` 放进 `.minecraft/mods/`；**同一时间只能有一个 satella**。
+4. 把 Release 里的 **`satella-dt-1.0.0-mc26.2.jar`**（自己构建则是 `build\libs\satella-mc26.2-1.0.0+mc26.2.jar`）放进 `.minecraft/mods/`；**同一时间只能有一个 satella**。
 
 ## 从源码构建
 
