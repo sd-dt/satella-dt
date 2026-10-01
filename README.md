@@ -10,6 +10,8 @@
 
 当前版本：**1.0.0+mc26.2-dt261001b** ｜ 游戏版本：Minecraft **26.2** + Fabric ｜ 许可：**CC0-1.0** ｜ 更新：2026-10-01
 
+**中文** ｜ [English](README.en.md)
+
 仓库地址：`https://github.com/sd-dt/satella-dt`
 
 </div>
