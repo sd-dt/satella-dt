@@ -4,23 +4,26 @@ import fi.dy.masa.malilib.config.IConfigOptionListEntry;
 import fi.dy.masa.malilib.util.StringUtils;
 
 /**
- * 三叉戟交互优先级：右键方块时「方块」与「工具」谁优先，三种模式。
+ * 工具交互优先级：右键方块时「方块」与「工具」谁优先，三种模式。
  *
  * <p>原版 {@code Minecraft#startUseItem} 的顺序是「主手方块 → 主手物品 → 副手方块 → 副手物品」：
- * 命中方块就先走方块交互，物品（激流三叉戟 / 弓箭）便用不出来。本选项决定怎么改写这个顺序。
+ * 命中方块就先走方块交互，物品（激流三叉戟 / 弩 / 弓）便用不出来。本选项决定怎么改写这个顺序。
  *
  * <ul>
  *   <li>{@link #TOOL_FIRST}：<b>工具优先</b>——任何方块前都使用工具，不交互方块
  *       （激流三叉戟、已蓄力弩、有箭的弓）；工具条件不满足时（弩未蓄力、弓无箭）仍走原版流程。</li>
- *   <li>{@link #INTERACTABLE_FIRST}：<b>可交互方块优先</b>——先让原版处理方块：可交互方块正常交互；
- *       不可交互方块由原版返回 {@code PASS} 后自然回退到物品使用（即触发激流）。
+ *   <li>{@link #INTERACTABLE_FIRST}：<b>可交互方块优先</b>——可交互方块（箱子、工作台、门…）正常交互；
+ *       <b>不可交互方块</b>（石头、泥土…）与空气都由工具接管（即触发激流）。
+ *       接管是显式的：方块交互没有消耗掉这次右键时（原版返回 {@code PASS}/{@code FAIL}），
+ *       由模组自己调用 {@code useItem} 并返回 {@code SUCCESS}，不再依赖原版「自然回退」。
  *       <b>默认值</b>，最接近原版行为。</li>
- *   <li>{@link #PLACE_FIRST}：<b>放置方块优先</b>——不接管方块交互、也不触发激流；
- *       原版流程会继续走到副手，副手的方块照常放置。</li>
+ *   <li>{@link #PLACE_FIRST}：<b>放置方块优先</b>——只有「准星命中方块 且 副手拿着可放置的方块」时
+ *       才把这轮右键让给副手去放方块（主手不触发激流）；<b>右击空气/实体</b>或副手没有可放方块时，
+ *       照常触发激流。</li>
  * </ul>
  *
- * <p>拦截不依赖方块交互距离：注入点只在准星确实命中方块时被调用，而准星由
- * {@code BLOCK_INTERACTION_RANGE} 属性决定，因此任意交互距离下都生效。
+ * <p>拦截不依赖方块交互距离：命中判定用的是准星自己算出来的 {@code hitResult}，
+ * 因此任意交互距离下都生效。
  *
  * <p>纯客户端实现：只在客户端取消方块交互并改发「使用物品」包，服务器无需安装本模组。
  */
@@ -71,6 +74,10 @@ public enum ToolInteractionPriority implements IConfigOptionListEntry {
 
     public boolean isToolFirst() {
         return this == TOOL_FIRST;
+    }
+
+    public boolean isInteractableFirst() {
+        return this == INTERACTABLE_FIRST;
     }
 
     public boolean isPlaceFirst() {

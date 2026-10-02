@@ -81,19 +81,25 @@ public final class AutoTradeConfigs implements IConfigHandler {
                 "服务器快捷潜影盒兼容", false,
                 "让 Item Scroller、Inventory Profiles Next 和 Tweakeroo 忽略指定潜影盒组件，配置文件位于 config/satella/ignored-components.txt");
 
-        public static final ConfigOptionList ENCHANTMENT_COLOR = new ConfigOptionList("附魔显示颜色", GlintPreset.WHITE,
-                "点击切换预设附魔光效颜色");
+        public static final ConfigOptionList ENCHANTMENT_COLOR = new ConfigOptionList("附魔显示颜色",
+                GlintPreset.NONE,
+                "点击切换预设附魔光效颜色\n"
+                        + "原版光效（不接管，默认）：完全不动原版附魔光效，等同原版行为\n"
+                        + "其余颜色：用本模组自己的贴图替换物品光效\n"
+                        + "无论选哪一项，只要检测到光影（Iris）启用了光影包，或材质包替换过原版附魔光效贴图，"
+                        + "都会自动让位、回退原版光效");
 
         public static final ConfigOptionList ENCHANTMENT_SHAPE = new ConfigOptionList(
                 "光效形态", GlintShape.COOL,
-                "点击切换附魔光效形态\n炫酷：光效只保留在亮网格线上，呈图案化效果，可消除自定义模型（如脸部材质包）在眼睛部位的闪烁\n默认：完整的整体光膜效果");
+                "点击切换附魔光效形态\n炫酷：光效只保留在亮网格线上，呈图案化效果，可消除自定义模型（如脸部材质包）在眼睛部位的闪烁\n默认：完整的整体光膜效果\n仅在「附魔显示颜色」选了颜色、且没有让位时生效");
 
         public static final ConfigOptionList TOOL_INTERACTION_PRIORITY = new ConfigOptionList(
-                "三叉戟交互", ToolInteractionPriority.INTERACTABLE_FIRST,
-                "点击切换右键方块时的处理方式\n"
-                        + "工具优先：任何方块前都使用工具（激流三叉戟 / 已蓄力弩 / 有箭的弓），不交互方块\n"
-                        + "可交互方块优先：右键可交互方块时正常交互；右键不可交互方块时使用工具（即触发激流，默认）\n"
-                        + "放置方块优先：不触发激流，方块交互交给原版流程自己走（副手的方块照常放置）\n"
+                "工具交互", ToolInteractionPriority.INTERACTABLE_FIRST,
+                "点击切换右键时的处理方式（主手拿着激流三叉戟 / 已蓄力弩 / 有箭的弓时生效）\n"
+                        + "工具优先：任何方块前都使用工具，不交互方块\n"
+                        + "可交互方块优先（默认）：右键可交互方块正常交互；右键不可交互方块、或右键空气时使用工具（即触发激流）\n"
+                        + "放置方块优先：准星命中方块且副手拿着方块时，把这轮右键让给副手放方块（不触发激流）；"
+                        + "右击空气或副手没有可放方块时照常触发激流\n"
                         + "不论方块交互距离设置为多少都生效\n纯客户端功能，服务器无需安装");
 
         public static final ConfigOptionList OFFHAND_FOOD_PRIORITY = new ConfigOptionList(
@@ -124,7 +130,7 @@ public final class AutoTradeConfigs implements IConfigHandler {
                 AUTOMATION_MODE, AUTOMATION_KEY, AUTOMATION_MODE_KEY, AUTOMATION_INTERVAL,
                 CRAFT_FILL_MODE, RECIPE_FILL_ITERATIONS, CRAFT_RESIDUE, STONECUTTING_INPUT, STONECUTTING_OUTPUT, GUI_DISPLAY);
 
-        /** 配置界面“杂项”分类页（「副手食物」紧随「三叉戟交互」之后） */
+        /** 配置界面“杂项”分类页（「副手食物」紧随「工具交互」之后） */
         public static final ImmutableList<IConfigBase> MISC_OPTIONS = ImmutableList.of(
                 BETTER_CROSSBOW, BETTER_CROSSBOW_INTERVAL, SERVER_SHULKER_COMPAT, ENCHANTMENT_COLOR,
                 ENCHANTMENT_SHAPE, TOOL_INTERACTION_PRIORITY, OFFHAND_FOOD_PRIORITY, DROP_BLOCK_ITEMS, ST_RULES);
@@ -160,9 +166,10 @@ public final class AutoTradeConfigs implements IConfigHandler {
     /**
      * 旧版本配置项改名后的兼容：把旧键的值搬到新键上。
      *
-     * <p>「工具交互优先级」（工具优先 / 交互优先 两模式）已改名为「三叉戟交互」（三模式），
-     * 不迁移的话升级后会静默回到默认值。旧值 {@code interaction_first} 由
-     * {@code ToolInteractionPriority.fromString} 接成「可交互方块优先」。
+     * <p>历史沿革：<b>「工具交互优先级」</b>（工具优先 / 交互优先 两模式）
+     * → <b>「三叉戟交互」</b>（工具优先 / 可交互方块优先 / 放置方块优先）
+     * → <b>「工具交互」</b>（本次改名，语义不变）。不迁移的话升级后会静默回到默认值。
+     * 旧值 {@code interaction_first} 由 {@code ToolInteractionPriority.fromString} 接成「可交互方块优先」。
      */
     private static void migrateLegacyOptionNames(JsonObject root) {
         JsonElement tradeElement = root.get("Trade");
@@ -170,8 +177,12 @@ public final class AutoTradeConfigs implements IConfigHandler {
             return;
         }
         JsonObject trade = tradeElement.getAsJsonObject();
-        if (trade.has("工具交互优先级") && !trade.has("三叉戟交互")) {
-            trade.add("三叉戟交互", trade.get("工具交互优先级"));
+        if (!trade.has("工具交互")) {
+            if (trade.has("三叉戟交互")) {
+                trade.add("工具交互", trade.get("三叉戟交互"));
+            } else if (trade.has("工具交互优先级")) {
+                trade.add("工具交互", trade.get("工具交互优先级"));
+            }
         }
     }
 

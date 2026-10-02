@@ -16,7 +16,9 @@ public class GlintItemFeatureRendererMixin {
     private static RenderType autoTrade$glint() {
         if (!logged) {
             logged = true;
-            LOGGER.info("26.2 ItemFeatureRenderer glint redirect active");
+            LOGGER.info("26.2 ItemFeatureRenderer glint redirect active | 附魔光效状态：{} | 光效贴图来源包：{}",
+                    greenebolt.autotrade.GlintCompat.describe(),
+                    greenebolt.autotrade.GlintCompat.glintSources());
         }
         return GlintRenderType.glint();
     }

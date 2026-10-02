@@ -6,9 +6,9 @@
 
 **A modified build based on `satella-mc26.2-1.0.0+mc26.2`**
 
-Auto trading · Auto crafting / stonecutting · Item protection · Better crossbow · Three trident-interaction modes · Offhand food · Enchantment glint · `/st` locator
+Auto trading · Auto crafting / stonecutting · Item protection · Better crossbow · Three tool-interaction modes · Offhand food · Enchantment glint · `/st` locator
 
-Current version: **1.0.0+mc26.2-dt261001b** | Minecraft: **26.2** + Fabric | License: **CC0-1.0** | Updated: 2026-10-01
+Current version: **1.0.0+mc26.2-dt261002a** | Minecraft: **26.2** + Fabric | License: **CC0-1.0** | Updated: 2026-10-02
 
 [中文说明](README.md) ｜ **English**
 
@@ -58,15 +58,15 @@ This repository is a **modified build based on `satella-mc26.2-1.0.0+mc26.2`**. 
 | Feature | Description |
 |---|---|
 | **Better crossbow** | Holding right-click with a crossbow keeps using it and re-clicks on a configurable interval; firing pauses automatically while a container is open or while litematica-printer is restocking shulkers |
-| **Three trident-interaction modes** | Tool first / Interactable block first / Place block first (see below) |
+| **Three tool-interaction modes** | Tool first / Interactable block first / Place block first (see below) |
 | **Offhand food** | With a riptide trident in the main hand and food in the offhand, "Eat first" suppresses riptide and lets vanilla eat; you will not shoot forward right after finishing a meal |
 
 ### Interaction and glint
 
 | Feature | Description |
 |---|---|
-| **Trident interaction** | **Tool first** — always use the tool (riptide trident / charged crossbow / bow with arrows) in front of any block; **Interactable block first** (default) — interactable blocks are used normally, only non-interactable blocks trigger riptide; **Place block first** — no riptide, block interaction is left to vanilla and the offhand block is placed as usual |
-| **Enchantment glint colour** | 19 presets (including rainbow, vanilla-soft and off) |
+| **Tool interaction** | **Tool first** — always use the tool (riptide trident / charged crossbow / bow with arrows) in front of any block; **Interactable block first** (default) — interactable blocks are used normally, while non-interactable blocks and air trigger riptide; **Place block first** — only when the crosshair is on a block **and** the offhand holds a placeable block is the click handed to the offhand (no riptide); right-clicking air, or having no placeable offhand block, still triggers riptide |
+| **Enchantment glint colour** | 19 presets (including rainbow and vanilla-soft). **Default "Vanilla glint (no override)"** — the mod does not touch vanilla glint at all; whenever a shader pack (Iris) is in use or a resource pack replaces the vanilla glint textures, the mod yields automatically and never fights for priority |
 | **Glint shape** | **Cool** — the glint is kept on the bright grid lines only (patterned), which removes the flicker that custom models such as face textures show around the eyes; **Default** — the full glint film |
 
 ### `/st` locator
@@ -85,11 +85,21 @@ A client-side biome and structure locator (a port of the Datapack Map algorithm)
 
 | Change | Description |
 |---|---|
-| **Trident interaction: two modes → three modes** | The old "tool interaction priority" (tool first / interact first) became "trident interaction": Tool first / **Interactable block first** (default, closest to vanilla) / **Place block first** (no riptide, offhand block wins); existing config values are migrated automatically |
-| **New "offhand food" option** | "Riptide first / Eat first", sitting right below the trident option; eating is handled entirely by vanilla, so you no longer get an eating animation that never fills you up (or a riptide when you stop) |
+| **Trident interaction: two modes → three modes** | The old "tool interaction priority" (tool first / interact first) became a three-mode option: Tool first / **Interactable block first** (default, closest to vanilla) / **Place block first** (no riptide, offhand block wins); existing config values are migrated automatically |
+| **New "offhand food" option** | "Riptide first / Eat first", sitting right below the tool option; eating is handled entirely by vanilla, so you no longer get an eating animation that never fills you up (or a riptide when you stop) |
 | **On-land riptide compensation** | With a riptide enchantment but out of water, vanilla `use()` returns FAIL early and the release packet never goes out; the mod now enters the using state so servers that allow on-land riptide work properly |
 | **Armor glint fix** | Removed the override that applied the **item** glint texture to **armor**; armor glint is fully vanilla again (item colours and shapes are unaffected) |
-| **Localisation** | Language files completed; the new trident modes and offhand-food option have both Chinese and English keys |
+| **Localisation** | Language files completed; the new modes and offhand-food option have both Chinese and English keys |
+
+## Changes compared to `satella-mc26.2-1.0.0+mc26.2-dt261001b` (2026-10-02)
+
+| Change | Description |
+|---|---|
+| **Config option renamed: 三叉戟交互 → 工具交互** | Same semantics, just a more accurate name; the old keys (三叉戟交互 / 工具交互优先级) are migrated automatically on load, so no config value is lost |
+| **Fixed "Interactable block first" doing nothing when right-clicking a non-interactable block** | The old code relied on vanilla's natural fallback; a FAIL result (which aborts the whole right-click loop) or the offhand grabbing the click made it look like nothing happened. It now reads the interaction result explicitly and triggers the tool itself |
+| **"Place block first" now triggers riptide when right-clicking air** | It only yields to the offhand when the crosshair is on a block **and** the offhand holds a placeable block; right-clicking air/a mob, or having no placeable offhand block, triggers riptide as usual |
+| **Enchantment glint off by default (no override)** | `附魔显示颜色` now defaults to "Vanilla glint (no override)" and leaves vanilla glint untouched; the default configuration creates no custom render layer at all |
+| **Enchantment glint no longer fights resource packs / shaders** | New yield check: when a shader pack (Iris) is in use, or a resource pack replaces `enchanted_glint_item/armor.png`, the mod falls back to vanilla glint |
 
 > The mod itself, its textures and most features come from the original Satella author; this repository only carries the changes listed above.
 
@@ -126,15 +136,15 @@ Config file: `.minecraft/config/satella/Satella.json`. Frequently used entries:
 | `全自动合成` group | Automation switch, mode (crafting / stonecutting), cycle, residual threshold |
 | `拦截目标物品丢弃` | Item-protection whitelist |
 | `更NB的弩` / `更NB的弩周期` | Better crossbow and its interval |
-| **`三叉戟交互`** | Tool first / Interactable block first (default) / Place block first |
+| **`工具交互`** | Tool first / Interactable block first (default) / Place block first |
 | **`副手食物`** | Riptide first (default) / Eat first |
-| `附魔显示颜色` / `光效形态` | Glint colour and shape (items only) |
+| `附魔显示颜色` / `光效形态` | Glint colour and shape (items only). Colour defaults to "Vanilla glint (no override)" and yields automatically when a shader pack is in use or a resource pack replaces the vanilla glint textures |
 | `服务器快捷潜影盒兼容` | Works together with `config/satella/ignored-components.txt` |
 | `多环定位规则` | The `/st rules` visual editor |
 
-*(In-game option labels are currently Chinese only; the new trident / offhand-food values have English names as well.)*
+*(In-game option labels are currently Chinese only; the new mode / offhand-food values have English names as well.)*
 
-> Want to trace the trident decision chain in game? Create an empty `satella-diag.txt` in your game directory — every tool takeover appends one line of detail.
+> Want to trace the tool decision chain in game? Create an empty `satella-diag.txt` in your game directory — every tool takeover appends one line of detail.
 
 ## Credits and license
 
