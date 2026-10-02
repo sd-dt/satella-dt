@@ -26,49 +26,63 @@ import java.util.Map;
  * </ul>
  * 因此形态切换只是换纹理，无需改动管线、纹理变换或深度分层 —— 与 1.21.11 主版
  * （{@code GlintRenderLayer}）的行为一致。
+ *
+ * <p><b>不接管的情形</b>（直接返回原版 {@code RenderType}，不创建任何自定义渲染层）：
+ * <ol>
+ *   <li>「附魔显示颜色」= {@link GlintPreset#NONE}（原版光效，默认值）；</li>
+ *   <li>{@link GlintCompat#shouldYield()} 为真 —— 光影（Iris）启用了光影包，
+ *       或材质包替换过原版附魔光效贴图。此时本模组让位，避免抢优先级。</li>
+ * </ol>
+ *
+ * <p>渲染层表改为<b>惰性构建</b>：默认配置下（不接管）整套 100 多个 {@code RenderType} 根本不会创建。
  */
 public final class GlintRenderType {
-    private static final Map<GlintShape, Map<GlintPreset, RenderType>> GLINT = shapeMap();
-    private static final Map<GlintShape, Map<GlintPreset, RenderType>> TRANSLUCENT = shapeMap();
-    private static final Map<GlintShape, Map<GlintPreset, RenderType>> ARMOR_GLINT = shapeMap();
 
-    private static Map<GlintShape, Map<GlintPreset, RenderType>> shapeMap() {
-        Map<GlintShape, Map<GlintPreset, RenderType>> map = new EnumMap<>(GlintShape.class);
-        for (GlintShape shape : GlintShape.values()) {
-            map.put(shape, new EnumMap<>(GlintPreset.class));
-        }
-        return map;
-    }
-
-    static {
-        for (GlintShape shape : GlintShape.values()) {
-            for (GlintPreset preset : GlintPreset.values()) {
-                String name = shape.getStringValue() + "_" + preset.getStringValue();
-                GLINT.get(shape).put(preset,
-                        build("glint_" + name, shape, preset, TextureTransform.GLINT_TEXTURING, null));
-                TRANSLUCENT.get(shape).put(preset,
-                        build("glint_translucent_" + name, shape, preset, TextureTransform.GLINT_TEXTURING,
-                                OutputTarget.ITEM_ENTITY_TARGET));
-                ARMOR_GLINT.get(shape).put(preset,
-                        build("armor_glint_" + name, shape, preset,
-                                TextureTransform.ARMOR_ENTITY_GLINT_TEXTURING, null));
-            }
-        }
-    }
+    /** 三套管线：普通光效 / 透明光效 / 盔甲光效（盔甲那套当前没有注册使用，保留以便将来启用）。 */
+    private enum Kind { GLINT, TRANSLUCENT, ARMOR }
 
     private GlintRenderType() {}
 
-    public static RenderType glint() { return selected(GLINT, RenderTypes.glint()); }
-    public static RenderType translucent() { return selected(TRANSLUCENT, RenderTypes.glintTranslucent()); }
-    public static RenderType armorGlint() { return selected(ARMOR_GLINT, RenderTypes.armorEntityGlint()); }
+    public static RenderType glint() {
+        return select(Kind.GLINT, RenderTypes.glint());
+    }
 
-    private static RenderType selected(Map<GlintShape, Map<GlintPreset, RenderType>> byShape, RenderType fallback) {
-        Map<GlintPreset, RenderType> layers = byShape.get(currentShape());
-        if (layers == null) {
-            return fallback;
+    public static RenderType translucent() {
+        return select(Kind.TRANSLUCENT, RenderTypes.glintTranslucent());
+    }
+
+    public static RenderType armorGlint() {
+        return select(Kind.ARMOR, RenderTypes.armorEntityGlint());
+    }
+
+    private static RenderType select(Kind kind, RenderType vanilla) {
+        // ① 关闭光效（默认）或外部接管 → 让位，返回原版
+        if (GlintCompat.shouldYield()) {
+            return vanilla;
         }
-        GlintPreset preset = (GlintPreset) AutoTradeConfigs.Trade.ENCHANTMENT_COLOR.getOptionListValue();
-        return layers.getOrDefault(preset, fallback);
+        GlintPreset preset = currentPreset();
+        if (preset == null || preset.isNone()) {
+            return vanilla;
+        }
+        Map<GlintShape, Map<GlintPreset, RenderType>> byShape = Tables.ALL.get(kind);
+        if (byShape == null) {
+            return vanilla;
+        }
+        Map<GlintPreset, RenderType> layers = byShape.get(currentShape());
+        return layers == null ? vanilla : layers.getOrDefault(preset, vanilla);
+    }
+
+    /** 读取当前颜色；配置尚未就绪时按「不接管」处理。 */
+    private static GlintPreset currentPreset() {
+        try {
+            Object value = AutoTradeConfigs.Trade.ENCHANTMENT_COLOR.getOptionListValue();
+            if (value instanceof GlintPreset preset) {
+                return preset;
+            }
+        } catch (Throwable ignored) {
+            // 配置未初始化：使用默认（不接管）
+        }
+        return GlintPreset.NONE;
     }
 
     /** 读取当前形态；配置尚未就绪时退回「炫酷」，避免渲染路径抛异常。 */
@@ -82,6 +96,44 @@ public final class GlintRenderType {
             // 配置未初始化：使用默认形态
         }
         return GlintShape.COOL;
+    }
+
+    /** 首次访问才构建渲染层表（类加载惰性）。 */
+    private static final class Tables {
+        static final Map<Kind, Map<GlintShape, Map<GlintPreset, RenderType>>> ALL = buildAll();
+
+        // 注意：不要把这个方法命名为 build()（无参），否则会与外部 GlintRenderType.build(String,...)
+        // 在 create() 的作用域内产生重载解析冲突。
+        private static Map<Kind, Map<GlintShape, Map<GlintPreset, RenderType>>> buildAll() {
+            Map<Kind, Map<GlintShape, Map<GlintPreset, RenderType>>> all = new EnumMap<>(Kind.class);
+            for (Kind kind : Kind.values()) {
+                Map<GlintShape, Map<GlintPreset, RenderType>> byShape = new EnumMap<>(GlintShape.class);
+                for (GlintShape shape : GlintShape.values()) {
+                    Map<GlintPreset, RenderType> byPreset = new EnumMap<>(GlintPreset.class);
+                    for (GlintPreset preset : GlintPreset.values()) {
+                        // NONE = 不接管，永远不参与渲染层表
+                        if (preset.isNone()) {
+                            continue;
+                        }
+                        byPreset.put(preset, create(kind, shape, preset));
+                    }
+                    byShape.put(shape, byPreset);
+                }
+                all.put(kind, byShape);
+            }
+            return all;
+        }
+
+        private static RenderType create(Kind kind, GlintShape shape, GlintPreset preset) {
+            String name = shape.getStringValue() + "_" + preset.getStringValue();
+            return switch (kind) {
+                case GLINT -> build("glint_" + name, shape, preset, TextureTransform.GLINT_TEXTURING, null);
+                case TRANSLUCENT -> build("glint_translucent_" + name, shape, preset,
+                        TextureTransform.GLINT_TEXTURING, OutputTarget.ITEM_ENTITY_TARGET);
+                case ARMOR -> build("armor_glint_" + name, shape, preset,
+                        TextureTransform.ARMOR_ENTITY_GLINT_TEXTURING, null);
+            };
+        }
     }
 
     private static RenderType build(String name, GlintShape shape, GlintPreset preset,

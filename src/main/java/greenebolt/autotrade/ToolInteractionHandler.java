@@ -1,8 +1,10 @@
 package greenebolt.autotrade;
 
+import net.minecraft.client.Minecraft;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.BowItem;
 import net.minecraft.world.item.CrossbowItem;
 import net.minecraft.world.item.Item;
@@ -10,21 +12,24 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.TridentItem;
 import net.minecraft.world.item.enchantment.EnchantmentHelper;
+import net.minecraft.world.phys.HitResult;
 
 /**
  * 右键行为的判定中心（26.2 官方名版本）。
  *
  * <p>被 {@code mixin/ToolInteractionMixin} 在 {@code MultiPlayerGameMode#useItemOn} 与
- * {@code #useItem} 两处调用，负责回答三个问题：
+ * {@code #useItem} 几处调用，负责回答四个问题：
  * <ol>
- *   <li><b>工具优先时是否接管</b>（{@link #decide}）——激流三叉戟、已蓄力弩、有箭的弓；</li>
+ *   <li><b>当前手是否拿着「现在就能用的工具」</b>（{@link #decideTool}）——激流三叉戟、已蓄力弩、有箭的弓；</li>
  *   <li><b>优先进食是否生效</b>（{@link #isEatFirstActive}）——主手激流三叉戟 + 副手有食物
  *       （或本次按住已经吃过）；</li>
- *   <li><b>主手这次物品使用是否跳过</b>（{@link #shouldSkipMainHandUse}）——优先进食或不触发激流时。</li>
+ *   <li><b>主手这次物品使用是否跳过</b>（{@link #shouldSkipMainHandUse}）——优先进食，
+ *       或「放置方块优先」且真的能放下副手方块时；</li>
+ *   <li><b>准星是否命中方块、副手是否能放方块</b>——供「放置方块优先」判断这次右键该不该让给副手。</li>
  * </ol>
  *
- * <p>拦截不依赖交互距离：注入点在 {@code useItemOn} 上，而该方法只在准星确实命中方块时被调用
- * （准星由 {@code Player#blockInteractionRange()} 决定）。
+ * <p>拦截不依赖交互距离：命中判定直接用准星自己的 {@code hitResult}
+ * （由 {@code Player#blockInteractionRange()} 决定），因此任意交互距离下都成立。
  */
 public final class ToolInteractionHandler {
 
@@ -62,7 +67,7 @@ public final class ToolInteractionHandler {
 
     // ------------------------------------------------------------------ 模式读取
 
-    /** 当前的三叉戟交互模式；配置未就绪时按「可交互方块优先」处理。 */
+    /** 当前的工具交互模式；配置未就绪时按「可交互方块优先」处理。 */
     public static ToolInteractionPriority mode() {
         try {
             Object value = AutoTradeConfigs.Trade.TOOL_INTERACTION_PRIORITY.getOptionListValue();
@@ -80,7 +85,12 @@ public final class ToolInteractionHandler {
         return mode().isToolFirst();
     }
 
-    /** 当前是否「放置方块优先」（不触发激流）。 */
+    /** 当前是否「可交互方块优先」（方块不接管时由工具接管）。 */
+    public static boolean isInteractableFirst() {
+        return mode().isInteractableFirst();
+    }
+
+    /** 当前是否「放置方块优先」（有方块可放时不触发激流）。 */
     public static boolean isPlaceFirst() {
         return mode().isPlaceFirst();
     }
@@ -98,15 +108,15 @@ public final class ToolInteractionHandler {
     // ------------------------------------------------------------------ 工具判定
 
     /**
-     * 判定本次右键是否应由工具接管（只在「工具优先」模式下调用）。
+     * 判定当前手的物品是否应当由工具接管（与模式无关，由调用方按模式决定是否使用本结果）。
      *
      * <p><b>返回值的选择依据</b>（详见 {@link Decision#selfInvoke()}）：
-     * 弩与弓的 {@code use()} 在正常条件下返回 CONSUME，走原版 PASS 回退即可；
+     * 弩与弓的 {@code use()} 在正常条件下返回成功（CONSUME），走原版 PASS 回退即可；
      * 而激流三叉戟在陆地会返回 FAIL，走回退会让原版 {@code startUseItem} 直接结束，
      * 因此必须由注入点自己发包并返回 SUCCESS。
      */
-    public static Decision decide(Player player, InteractionHand hand) {
-        if (player == null || !isToolFirst()) {
+    public static Decision decideTool(Player player, InteractionHand hand) {
+        if (player == null) {
             return PASS;
         }
         ItemStack stack = player.getItemInHand(hand);
@@ -173,15 +183,39 @@ public final class ToolInteractionHandler {
      *       {@code useItem} 并把使用包发给服务端。服务端一旦因此进入「使用中」，紧随其后的副手食物
      *       会在 {@code LivingEntity#startUsingItem} 的 {@code !isUsingItem()} 守卫上被丢弃 ——
      *       表现为「有进食动画但吃不下、停下后放激流」。所以这里直接取消主手使用，让原版走到副手。</li>
-     *   <li><b>放置方块优先</b>：不触发激流；跳过主手使用后，{@code startUseItem} 会继续到副手，
-     *       由副手把方块放下去。</li>
+     *   <li><b>放置方块优先</b>：只有当这次右键真的能放下副手方块时才让开主手，否则照常触发激流。
+     *       「真的能放」＝ 准星命中方块（{@link #isAimingAtBlock()}）<b>且</b>副手拿着方块
+     *       （{@link #offhandCanPlace()}）。右击空气时没有方块可放，于是激流照常触发。</li>
      * </ul>
      */
     public static boolean shouldSkipMainHandUse(Player player) {
         if (player == null || !isRiptideTrident(player, player.getMainHandItem())) {
             return false;
         }
-        return isEatFirstActive(player) || isPlaceFirst();
+        if (isEatFirstActive(player)) {
+            return true;
+        }
+        if (!isPlaceFirst()) {
+            return false;
+        }
+        return isAimingAtBlock() && offhandCanPlace(player);
+    }
+
+    /** 准星当前是否命中方块（空气/实体都是 false）。 */
+    public static boolean isAimingAtBlock() {
+        try {
+            Minecraft minecraft = Minecraft.getInstance();
+            return minecraft != null
+                    && minecraft.hitResult != null
+                    && minecraft.hitResult.getType() == HitResult.Type.BLOCK;
+        } catch (Throwable t) {
+            return false;
+        }
+    }
+
+    /** 副手是否拿着「可放置的方块」（用来判断放置方块优先时副手是否有事可做）。 */
+    public static boolean offhandCanPlace(Player player) {
+        return player != null && player.getOffhandItem().getItem() instanceof BlockItem;
     }
 
     // ------------------------------------------------------------------ 物品判定

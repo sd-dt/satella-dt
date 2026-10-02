@@ -65,6 +65,8 @@ public final class AutoTrade implements ModInitializer, IKeybindProvider, IHotke
 
     public static void tick(Minecraft minecraft) {
         if (minecraft.level != null) ItemNameUtils.warmup();
+        // 附魔光效的让位判定（光影是否启用 / 材质包是否改过原版光效贴图），内部限频到 2 秒
+        GlintCompat.tick();
         tickBetterCrossbow(minecraft);
         AutoCraftController.tick(minecraft);
         AutoStonecutController.tick(minecraft);
@@ -239,10 +241,10 @@ public final class AutoTrade implements ModInitializer, IKeybindProvider, IHotke
     }
 
     /**
-     * 临时诊断：记录「工具优先」判定链的每一步。
+     * 临时诊断：记录「工具交互」判定链的每一步。
      *
      * <p>写入游戏目录下的 {@code satella-diag.txt}（存在该文件时才写）。
-     * 用于定位「陆地手持激流三叉戟未接管」的问题，排查结束后删除。
+     * 用于定位「手持激流三叉戟未接管 / 激流没触发」的问题，排查结束后删除该文件即可关闭。
      */
     public static void diagToolFirst(net.minecraft.world.entity.player.Player player,
                                      net.minecraft.world.InteractionHand hand, boolean selfInvoke) {
@@ -258,7 +260,8 @@ public final class AutoTrade implements ModInitializer, IKeybindProvider, IHotke
                     .append("  hand=").append(hand)
                     .append(" item=").append(stack.getItem())
                     .append(" 模式=").append(ToolInteractionHandler.mode().getStringValue())
-                    .append(" 自己发包=").append(selfInvoke);
+                    .append(" 自己发包=").append(selfInvoke)
+                    .append(" 准星=").append(hitTypeName());
             if (player != null) {
                 sb.append(" 激流强度=").append(riptideStrength(player, stack))
                         .append(" 水中/雨中=").append(player.isInWaterOrRain())
@@ -269,6 +272,17 @@ public final class AutoTrade implements ModInitializer, IKeybindProvider, IHotke
             java.nio.file.Files.writeString(log, sb.toString(), java.nio.charset.StandardCharsets.UTF_8,
                     java.nio.file.StandardOpenOption.CREATE, java.nio.file.StandardOpenOption.APPEND);
         } catch (Throwable ignored) {
+        }
+    }
+
+    /** 诊断用：准星当前命中类型（BLOCK / ENTITY / MISS）。 */
+    private static String hitTypeName() {
+        try {
+            Minecraft minecraft = Minecraft.getInstance();
+            return minecraft == null || minecraft.hitResult == null
+                    ? "null" : minecraft.hitResult.getType().name();
+        } catch (Throwable t) {
+            return "?";
         }
     }
 
