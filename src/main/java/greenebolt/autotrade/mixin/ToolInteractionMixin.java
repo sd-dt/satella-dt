@@ -2,6 +2,7 @@ package greenebolt.autotrade.mixin;
 
 import greenebolt.autotrade.AutoTrade;
 import greenebolt.autotrade.OffhandFoodState;
+import greenebolt.autotrade.PrinterRestockPause;
 import greenebolt.autotrade.ToolInteractionHandler;
 import net.minecraft.client.multiplayer.MultiPlayerGameMode;
 import net.minecraft.client.player.LocalPlayer;
@@ -15,7 +16,12 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 /**
- * 「工具交互」的三种模式 + 副手食物，共四处注入。
+ * 「工具交互」的三种模式 + 副手食物 + 「更NB的弩」连射兼容，共四处注入。
+ *
+ * <p><b>「更NB的弩」连射兼容（2026-10-11 重写）</b>：连射期间 {@code useItemOn} 在注入点 ①
+ * 顶部直接返回 {@code PASS}（三种模式一致），方块交互与副手放置全部让位，
+ * 右键只执行主手弩的发射/装填 —— 机制与官方新版 Satella 的 {@code InteractionPriorityMixin}
+ * （{@code interactBlock} 返回 PASS）相同，只是合并进了本类以共享注入点。
  *
  * <p>原版 {@code Minecraft#startUseItem} 的实际流程（26.2 反编译核对，与 1.21.11 结构相同）：
  * <pre>
@@ -65,11 +71,34 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 @Mixin(value = MultiPlayerGameMode.class, remap = false)
 public class ToolInteractionMixin {
 
-    /** ① 方块交互入口：「工具优先」在这里接管。 */
+    /**
+     * ⓪ 「更NB的弩」连射期间的兼容让位（机制同官方新版蓝本的 {@code InteractionPriorityMixin}）：
+     * 连射时 {@code useItemOn} 直接返回 {@code PASS} —— 不打开可交互方块、也不让副手抢放方块，
+     * 原版 {@code startUseItem} 随即落到主手 {@code useItem}，右键始终只执行弩的发射/装填逻辑。
+     * 松开右键后连射结束，三种模式恢复各自行为。
+     *
+     * <p>补货进行中不让位：连射在补货开始时本就会暂停（见 {@code AutoTrade#tickBetterCrossbow}），
+     * 这里是同一 tick 内时序重叠的兜底。
+     */
+    private static boolean shouldYieldToCrossbow() {
+        return AutoTrade.isBetterCrossbowShooting() && !PrinterRestockPause.isRestockInProgress();
+    }
+
+    /** ① 方块交互入口：「更NB的弩」连射在这里让位；「工具优先」在这里接管。 */
     @Inject(method = "useItemOn", at = @At("HEAD"), cancellable = true, remap = false)
     private void satella$onUseItemOnHead(LocalPlayer player, InteractionHand hand, BlockHitResult hitResult,
                                          CallbackInfoReturnable<InteractionResult> cir) {
-        if (player == null || !ToolInteractionHandler.isToolFirst()) {
+        if (player == null) {
+            return;
+        }
+
+        // ⓪ 弩连射兼容：三种模式下都跳过方块交互，右键只留给弩（返回 PASS → 原版落到 useItem）
+        if (shouldYieldToCrossbow()) {
+            cir.setReturnValue(InteractionResult.PASS);
+            return;
+        }
+
+        if (!ToolInteractionHandler.isToolFirst()) {
             // 「可交互方块优先 / 放置方块优先」：交给原版处理方块，
             // 方块没接管时由下面第二处注入按模式改用工具
             return;

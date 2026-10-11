@@ -38,16 +38,14 @@ public final class AutoTrade implements ModInitializer, IKeybindProvider, IHotke
 
     private static int betterCrossbowCounter;
     private static boolean betterCrossbowActive;
+    /** 连射进行中（给「工具交互」注入点读：连射期间不进行方块交互，右键只留给弩） */
+    private static volatile boolean betterCrossbowShooting;
     private static boolean physicalUseKeyDown;
 
-    /**
-     * 本次按住右键期间是否已经触发过方块交互。
-     *
-     * <p>周期射击会每 tick 调用 {@code startUseItem}，而只要准星命中方块就会走
-     * {@code useItemOn}，导致可交互方块被反复打开。原版只在「使用键刚按下」时走一次方块交互，
-     * 因此这里做同样的限制：每次物理按下只放行一次，松开后复位。
-     */
-    private static boolean blockInteractionDoneThisPress;
+    /** 「更NB的弩」当前是否处于连射状态（蓝本 InteractionPriorityMixin 的兼容开关）。 */
+    public static boolean isBetterCrossbowShooting() {
+        return betterCrossbowShooting;
+    }
 
     @Override public void onInitialize() {
         AutoTradeConfigs.register();
@@ -141,6 +139,13 @@ public final class AutoTrade implements ModInitializer, IKeybindProvider, IHotke
     /**
      * 「更NB的弩」：手持弩长按右键时保持使用键按下，并按周期重复执行右键（{@code startUseItem}）。
      * 移植自 1.21.11 主版的 {@code tickBetterCrossbow}，API 换成 26.2 官方名。
+     *
+     * <p><b>与「工具交互」三形态的兼容（2026-10-11 重写）</b>：连射期间置位
+     * {@link #betterCrossbowShooting}，由 {@code mixin/ToolInteractionMixin} 在
+     * {@code useItemOn} 入口直接让位（返回 {@code PASS}）——三种模式下都不再打开
+     * 可交互方块、也不让副手抢放方块，右键始终落到主手弩的发射/装填逻辑上
+     * （机制与官方新版蓝本的 {@code InteractionPriorityMixin} 一致）。因此这里不再需要
+     * 旧的「方块交互每次按住只放行一次」补丁。
      */
     private static void tickBetterCrossbow(Minecraft minecraft) {
         if (minecraft.player == null || minecraft.level == null
@@ -158,12 +163,14 @@ public final class AutoTrade implements ModInitializer, IKeybindProvider, IHotke
                 setUseKey(minecraft, false);
             }
             betterCrossbowActive = false;
+            betterCrossbowShooting = false;
             betterCrossbowCounter = 0;
             return;
         }
 
         if (!betterCrossbowActive) {
             betterCrossbowActive = true;
+            betterCrossbowShooting = true;
             betterCrossbowCounter = 0;
             setUseKey(minecraft, true);
             return;
@@ -175,8 +182,7 @@ public final class AutoTrade implements ModInitializer, IKeybindProvider, IHotke
         // 蓄力中不要重复触发物品使用。
         //
         // 原因：弩的蓄力需要计时器连续递减到蓄满。而每次 CrossbowItem.use() 都会把使用状态
-        // 重置回满值；贴墙时客户端每 tick 都会走方块分支，周期射击的额外调用会让计时器
-        // 反复归零、永远蓄不满。
+        // 重置回满值；周期射击的额外调用会让计时器反复归零、永远蓄不满。
         var stack = minecraft.player.getMainHandItem();
         boolean charged = CrossbowItem.isCharged(stack);
         if (minecraft.player.isUsingItem() && !charged) {
@@ -190,25 +196,10 @@ public final class AutoTrade implements ModInitializer, IKeybindProvider, IHotke
             return;
         }
 
-        // 同一次按住期间，方块交互只放行一次（避免可交互方块被反复打开）。
-        boolean aimingBlock = isAimingAtBlock(minecraft);
-        if (aimingBlock && blockInteractionDoneThisPress) {
-            return;
-        }
-
         if (++betterCrossbowCounter >= AutoTradeConfigs.Trade.BETTER_CROSSBOW_INTERVAL.getIntegerValue()) {
             betterCrossbowCounter = 0;
-            if (aimingBlock) {
-                blockInteractionDoneThisPress = true;
-            }
             ((MinecraftInvoker) (Object) minecraft).autoTrade$startUseItem();
         }
-    }
-
-    /** 准星当前是否命中方块。 */
-    private static boolean isAimingAtBlock(Minecraft minecraft) {
-        return minecraft.hitResult != null
-                && minecraft.hitResult.getType() == net.minecraft.world.phys.HitResult.Type.BLOCK;
     }
 
     private static boolean isHoldingCrossbow(Minecraft minecraft) {
@@ -224,6 +215,7 @@ public final class AutoTrade implements ModInitializer, IKeybindProvider, IHotke
             setUseKey(minecraft, false);
         }
         betterCrossbowActive = false;
+        betterCrossbowShooting = false;
         betterCrossbowCounter = 0;
     }
 
@@ -234,10 +226,6 @@ public final class AutoTrade implements ModInitializer, IKeybindProvider, IHotke
     /** 由 {@code MouseMixin} 在物理右键按下/松开时调用。 */
     public static void updatePhysicalUseKeyState(boolean pressed) {
         physicalUseKeyDown = pressed;
-        if (!pressed) {
-            // 松开右键后复位，让下一次按下的方块交互重新放行
-            blockInteractionDoneThisPress = false;
-        }
     }
 
     /**

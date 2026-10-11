@@ -8,7 +8,7 @@
 
 Auto trading · Auto crafting / stonecutting · Item protection · Better crossbow · Three tool-interaction modes · Offhand food · Enchantment glint · `/st` locator
 
-Current version: **1.0.0+mc26.2-dt261002a** | Minecraft: **26.2** + Fabric | License: **CC0-1.0** | Updated: 2026-10-02
+Current version: **1.0.0+mc26.2-dt261011a** | Minecraft: **26.2** + Fabric | License: **CC0-1.0** | Updated: 2026-10-11
 
 [中文说明](README.md) ｜ **English**
 

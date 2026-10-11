@@ -16,6 +16,7 @@
     "DropBlockCreativeScreenMixin",
     "MinecraftMixin",
     "EntityGlowMixin",
+    "EquipmentLayerRendererMixin",
     "GlintItemFeatureRendererMixin",
     "RenderTypeInvoker",
     "itemscroller.InventoryUtilsMixin",

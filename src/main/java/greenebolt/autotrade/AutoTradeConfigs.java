@@ -85,13 +85,9 @@ public final class AutoTradeConfigs implements IConfigHandler {
                 GlintPreset.NONE,
                 "点击切换预设附魔光效颜色\n"
                         + "原版光效（不接管，默认）：完全不动原版附魔光效，等同原版行为\n"
-                        + "其余颜色：用本模组自己的贴图替换物品光效\n"
+                        + "其余颜色：用本模组自己的贴图替换物品与盔甲的光效\n"
                         + "无论选哪一项，只要检测到光影（Iris）启用了光影包，或材质包替换过原版附魔光效贴图，"
                         + "都会自动让位、回退原版光效");
-
-        public static final ConfigOptionList ENCHANTMENT_SHAPE = new ConfigOptionList(
-                "光效形态", GlintShape.COOL,
-                "点击切换附魔光效形态\n炫酷：光效只保留在亮网格线上，呈图案化效果，可消除自定义模型（如脸部材质包）在眼睛部位的闪烁\n默认：完整的整体光膜效果\n仅在「附魔显示颜色」选了颜色、且没有让位时生效");
 
         public static final ConfigOptionList TOOL_INTERACTION_PRIORITY = new ConfigOptionList(
                 "工具交互", ToolInteractionPriority.INTERACTABLE_FIRST,
@@ -133,7 +129,7 @@ public final class AutoTradeConfigs implements IConfigHandler {
         /** 配置界面“杂项”分类页（「副手食物」紧随「工具交互」之后） */
         public static final ImmutableList<IConfigBase> MISC_OPTIONS = ImmutableList.of(
                 BETTER_CROSSBOW, BETTER_CROSSBOW_INTERVAL, SERVER_SHULKER_COMPAT, ENCHANTMENT_COLOR,
-                ENCHANTMENT_SHAPE, TOOL_INTERACTION_PRIORITY, OFFHAND_FOOD_PRIORITY, DROP_BLOCK_ITEMS, ST_RULES);
+                TOOL_INTERACTION_PRIORITY, OFFHAND_FOOD_PRIORITY, DROP_BLOCK_ITEMS, ST_RULES);
 
         public static final ImmutableList<IConfigBase> OPTIONS = ImmutableList.<IConfigBase>builder()
                 .addAll(TRADE_OPTIONS).addAll(AUTOMATION_OPTIONS).addAll(MISC_OPTIONS).build();

@@ -9,8 +9,6 @@
   "satella.config.residualCrafting": "残差合成",
   "satella.config.autoCrafting": "全自动合成",
   "satella.config.autoCraftingKey": "全自动合成开关键",
-  "satella.glint_shape.cool": "炫酷",
-  "satella.glint_shape.default": "默认",
   "satella.trident_mode.tool_first": "工具优先",
   "satella.trident_mode.interactable_first": "可交互方块优先",
   "satella.trident_mode.place_first": "放置方块优先",
