@@ -8,7 +8,7 @@
 
 Auto trading · Auto crafting / stonecutting · Item protection · Better crossbow · Three tool-interaction modes · Offhand food · Enchantment glint · `/st` locator
 
-Current version: **1.0.0+mc26.2-dt261011a** | Minecraft: **26.2** + Fabric | License: **CC0-1.0** | Updated: 2026-10-11
+Current version: **1.0.0+mc26.2-dt261017a** | Minecraft: **26.2** + Fabric | License: **CC0-1.0** | Updated: 2026-10-17
 
 [中文说明](README.md) ｜ **English**
 
@@ -59,7 +59,7 @@ This repository is a **modified build based on `satella-mc26.2-1.0.0+mc26.2`**. 
 |---|---|
 | **Better crossbow** | Holding right-click with a crossbow keeps using it and re-clicks on a configurable interval; firing pauses automatically while a container is open or while litematica-printer is restocking shulkers |
 | **Three tool-interaction modes** | Tool first / Interactable block first / Place block first (see below) |
-| **Offhand food** | With a riptide trident in the main hand and food in the offhand, "Eat first" suppresses riptide and lets vanilla eat; you will not shoot forward right after finishing a meal |
+| **Offhand food** | With a riptide trident in the main hand and food in the offhand, "Eat first" suppresses riptide and lets vanilla eat; you will not shoot forward right after finishing a meal. When the hunger bar is full and the food is not an always-edible item (e.g. golden apple), riptide is no longer suppressed (fixed 2026-10-17) |
 
 ### Interaction and glint
 

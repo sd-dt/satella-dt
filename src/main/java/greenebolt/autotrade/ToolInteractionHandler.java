@@ -163,6 +163,10 @@ public final class ToolInteractionHandler {
      * <p>判据是<b>副手有食物</b>，而不是「吃得下」——吃完后玩家通常已经吃饱，若按饥饿度判断，
      * 右键会在吃完的瞬间落回激流（表现为「吃完就往前飞出」）。另外补上「本次按住已经吃过」，
      * 覆盖刚好吃完最后一个、副手已空的情况。
+     *
+     * <p><b>2026-10-17 修复</b>：增加「当前真的吃得下」判断（{@link #canEatOffhandFood}）——
+     * 饱食度已满、且副手食物不是可溢出进食型（如金苹果）时，食物本来就吃不出去，
+     * 继续压制激流会导致「手持食物永远放不出激流」的 bug。
      */
     public static boolean isEatFirstActive(Player player) {
         if (player == null || !isEatFirst()) {
@@ -171,7 +175,34 @@ public final class ToolInteractionHandler {
         if (!isRiptideTrident(player, player.getMainHandItem())) {
             return false;
         }
-        return isFood(player.getOffhandItem()) || OffhandFoodState.ateThisPress();
+        if (OffhandFoodState.ateThisPress()) {
+            return true;
+        }
+        return canEatOffhandFood(player);
+    }
+
+    /**
+     * 副手食物当前是否「真的吃得下」。
+     *
+     * <p>与原版 {@code TridentItem}/{@code UseAnim} 的进食可行性同源：
+     * 饥饿值未满（{@code FoodData#needsFood()}）即可吃；饥饿值已满时，只有
+     * {@code FoodProperties#canAlwaysEat()} 为真（金苹果等可溢出进食型）才能继续吃。
+     * 判定异常时按旧行为处理（返回 true，维持压制），避免误放开激流。
+     */
+    private static boolean canEatOffhandFood(Player player) {
+        ItemStack off = player.getOffhandItem();
+        if (!isFood(off)) {
+            return false;
+        }
+        try {
+            net.minecraft.world.food.FoodProperties food = off.get(DataComponents.FOOD);
+            if (food == null) {
+                return false;
+            }
+            return player.getFoodData().needsFood() || food.canAlwaysEat();
+        } catch (Throwable t) {
+            return true;
+        }
     }
 
     /**
