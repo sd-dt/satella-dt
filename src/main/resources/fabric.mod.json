@@ -19,10 +19,10 @@
   "mixins": ["satella.mixins.json"],
   "depends": {
     "fabricloader": ">=0.19.3",
-    "minecraft": "~26.2-",
-    "java": ">=21",
+    "minecraft": "~26.3-",
+    "java": ">=25",
     "fabric-api": "*",
-    "malilib": ">=0.29.2- <0.30.0-"
+    "malilib": ">=0.30.0- <0.31.0-"
   },
   "suggests": {
     "modmenu": "*"

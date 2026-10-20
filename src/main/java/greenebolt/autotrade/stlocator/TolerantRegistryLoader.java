@@ -3,6 +3,7 @@ package greenebolt.autotrade.stlocator;
 import com.google.gson.JsonElement;
 import com.mojang.serialization.JsonOps;
 import com.mojang.serialization.Lifecycle;
+import net.minecraft.core.HolderGetter;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.MappedRegistry;
 import net.minecraft.core.RegistrationInfo;
@@ -39,20 +40,21 @@ final class TolerantRegistryLoader {
         Map<ResourceKey<?>, Exception> errors
     ) {
         List<MappedRegistry<?>> registries = new ArrayList<>(entries.size());
-        Map<ResourceKey<? extends Registry<?>>, RegistryOps.RegistryInfo<?>> infos = new HashMap<>();
+        // 26.3：RegistryOps.RegistryInfo 已移除，lookup 直接返回 HolderGetter
+        Map<ResourceKey<? extends Registry<?>>, HolderGetter<?>> infos = new HashMap<>();
         for (HolderLookup.RegistryLookup<?> lookup : baseLookups) {
-            infos.put(lookup.key(), RegistryOps.RegistryInfo.fromRegistryLookup(lookup));
+            infos.put(lookup.key(), lookup);
         }
         // 与原版一致：先注册所有 in-flight 注册表再解析，保证注册表之间的交叉引用可解析
         for (RegistryDataLoader.RegistryData<?> entry : entries) {
             MappedRegistry<?> registry = new MappedRegistry<>(entry.key(), Lifecycle.stable());
             registries.add(registry);
-            infos.put(entry.key(), infoOf(registry));
+            infos.put(entry.key(), registry.createRegistrationLookup());
         }
         RegistryOps.RegistryInfoLookup lookup = new RegistryOps.RegistryInfoLookup() {
             @Override
-            public <T> Optional<RegistryOps.RegistryInfo<T>> lookup(ResourceKey<? extends Registry<? extends T>> registryRef) {
-                return Optional.ofNullable((RegistryOps.RegistryInfo<T>) infos.get(registryRef));
+            public <T> Optional<HolderGetter<T>> lookup(ResourceKey<? extends Registry<? extends T>> registryRef) {
+                return Optional.ofNullable((HolderGetter<T>) infos.get(registryRef));
             }
         };
 
@@ -70,11 +72,6 @@ final class TolerantRegistryLoader {
             }
         }
         return frozen;
-    }
-
-    private static <T> RegistryOps.RegistryInfo<T> infoOf(WritableRegistry<T> registry) {
-        // 与原版一致使用 createRegistrationLookup：允许引用尚未解析的元素（惰性占位 Holder）
-        return new RegistryOps.RegistryInfo<>(registry, registry.createRegistrationLookup(), Lifecycle.stable());
     }
 
     private static void loadEntry(

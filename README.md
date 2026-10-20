@@ -4,11 +4,11 @@
 
 # satella-dt
 
-**基于 `satella-mc26.2-1.0.0+mc26.2` 的个人修改版**
+**基于 `satella-mc26.2-1.0.0+mc26.2` 的个人修改版 · 26.2 / 26.3 双线**
 
 自动交易 · 全自动合成/切石 · 物品保护 · 更NB的弩 · 工具交互三模式 · 副手食物 · 附魔光效 · `/st` 定位器
 
-当前版本：**1.0.0+mc26.2-dt261017a** ｜ 游戏版本：Minecraft **26.2** + Fabric ｜ 许可：**CC0-1.0** ｜ 更新：2026-10-17
+当前版本：**1.0.0+mc26.3-dt261020a** ｜ 游戏版本：Minecraft **26.3** + Fabric ｜ 许可：**CC0-1.0** ｜ 更新：2026-10-20
 
 **中文** ｜ [English](README.en.md)
 
@@ -22,9 +22,14 @@
 
 **Satella** 是一个纯客户端的 Fabric 实用模组（内部 mod id 仍为 `satella`），把「自动交易」和一堆自动化小工具做在了一起。
 
-本仓库是 **基于 `satella-mc26.2-1.0.0+mc26.2` 的修改版本**，源码为 Minecraft **26.2**（26.x 起官方名称即运行时名称，不再需要 mappings）构建线，用 Fabric Loom + JDK 25 构建。
+本仓库是 **基于 `satella-mc26.2-1.0.0+mc26.2` 的修改版本**。26.x 起官方名称即运行时名称，不再需要 mappings；仓库主分支当前是 **Minecraft 26.3** 构建线（`satella-26.3`），用 Fabric Loom + JDK 25 构建。26.2 线的源码保留在标签 `v1.0.0-mc26.2-dt261017a`。
 
 > 全部功能都在客户端实现，**不需要服务端安装**；使用时请遵守你所游玩服务器的规则。
+
+> **2026-10-20 升级到 Minecraft 26.3**：功能与 26.2 版一致，针对 26.3 重写了光效渲染层（双采样器）、
+> 输入（GLFW→SDL）、世界生成/结构定位（`RandomState`/`BiomeResolver`/`GenerationContext`）、
+> 动态注册表（`RegistryOps`）与丢弃入口（`MultiPlayerGameMode.dropItem`）。26.2 版继续用
+> `v1.0.0-mc26.2-dt261017a` 的 Release。
 
 ## 功能一览
 
@@ -105,23 +110,23 @@
 
 ## 安装
 
-1. 需要 Minecraft **26.2** + Fabric Loader（≥ 0.19.3）。
-2. 必需依赖：[Fabric API](https://modrinth.com/mod/fabric-api)、[MaLiLib](https://modrinth.com/mod/malilib)（`>= 0.29.2- < 0.30.0-`，配置界面与热键框架）。
+1. 需要 Fabric Loader（≥ 0.19.3）+ 对应游戏版本：**26.3**（当前主分支）或 **26.2**（用 26.2 的 Release）。
+2. 必需依赖：[Fabric API](https://modrinth.com/mod/fabric-api)、[MaLiLib](https://modrinth.com/mod/malilib)（26.3 用 `0.30.x`，26.2 用 `0.29.x`；配置界面与热键框架）。
 3. 可选依赖：[Mod Menu](https://modrinth.com/mod/modmenu)（配置入口）、[Item Scroller](https://modrinth.com/mod/item-scroller) / [Tweakeroo](https://modrinth.com/mod/tweakeroo) / Inventory Profiles Next（只影响「服务器快捷潜影盒兼容」这一项）。
-4. 把 Release 里最新的 **`satella-dt-*.jar`**（自己构建则取 `build\libs\satella-mc26.2-*.jar`，别拿 `-sources`）放进 `.minecraft/mods/`；**同一时间只能有一个 satella**。
+4. 把 Release 里对应游戏版本的 **`satella-dt-*.jar`**（自己构建则取 `build\libs\satella-mc26.3-*.jar` 或 `satella-mc26.2-*.jar`，别拿 `-sources`）放进 `.minecraft/mods/`；**同一时间只能有一个 satella**。
 
 ## 从源码构建
 
-本仓库是一个标准的 Fabric Loom 工程（26.2 免 mappings）：
+本仓库是一个标准的 Fabric Loom 工程（26.3 免 mappings）：
 
 ```powershell
-# 需要 JDK 25（26.2 的 class 版本为 69）
+# 需要 JDK 25（26.3 的 class 版本为 69）
 $env:JAVA_HOME = '<你的 JDK 25 路径>'
 .\gradlew.bat build --no-daemon --console=plain
-# 产物：build\libs\satella-mc26.2-1.0.0+mc26.2.jar
+# 产物：build\libs\satella-mc26.3-1.0.0+mc26.3-dt261020a.jar
 ```
 
-依赖版本写在 `gradle.properties`：`minecraft_version=26.2`、`loader_version=0.19.3`、`fabric_api_version=0.161.0+26.2`、`malilib_version=0.29.6`、`modmenu_version=20.0.1`。
+依赖版本写在 `gradle.properties`：`minecraft_version=26.3`、`loader_version=0.20.1`、`fabric_api_version=0.164.0+26.3`、`malilib_version=0.30.2`、`modmenu_version=21.0.0`、`itemscroller_version=0.33.1`。
 Gradle wrapper 指向腾讯镜像（`mirrors.cloud.tencent.com`），首次构建会自动下载 Gradle 9.6。
 
 ## 配置

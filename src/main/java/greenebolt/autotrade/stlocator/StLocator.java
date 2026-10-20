@@ -254,7 +254,7 @@ public final class StLocator {
             holder -> holder.is(biomeKey),
             RandomSource.create(worldgen.seed),
             true,
-            worldgen.randomState.sampler());
+            worldgen.randomState);
     }
 
     /** 最近结构搜索，返回锚点位置；null 表示半径内没找到。 */
@@ -340,6 +340,7 @@ public final class StLocator {
             worldgen.registryManager,
             worldgen.noiseGenerator,
             worldgen.biomeSource,
+            worldgen.climateSampler,
             worldgen.randomState,
             worldgen.templateManager,
             worldgen.seed,
@@ -350,8 +351,10 @@ public final class StLocator {
             .map(stub -> {
                 // findValidGenerationPoint 不一定应用群系判定，这里再确认一次锚点群系
                 BlockPos p = stub.position();
-                Holder<Biome> biome = worldgen.biomeSource.getNoiseBiome(
-                    p.getX() >> 2, p.getY() >> 2, p.getZ() >> 2, worldgen.randomState.sampler());
+                Holder<Biome> biome = worldgen.biomeResolver.getNoiseBiome(
+                    net.minecraft.core.QuartPos.fromBlock(p.getX()),
+                    net.minecraft.core.QuartPos.fromBlock(p.getY()),
+                    net.minecraft.core.QuartPos.fromBlock(p.getZ()));
                 if (!structure.biomes().contains(biome)) {
                     if (diag != null) diag[3]++;
                     return null;
@@ -446,7 +449,6 @@ public final class StLocator {
         Registry<Biome> biomeRegistry = worldgen.registryManager.lookupOrThrow(Registries.BIOME);
         List<BiomeHit> hits = new ArrayList<>();
         int sampleY = Math.max(worldgen.heightView.getMinY(), Math.min(64, worldgen.heightView.getMaxY() - 1));
-        var sampler = worldgen.randomState.sampler();
 
         for (int r = 0; r <= 6400 && hits.size() < limit; r += 32) {
             // 切比雪夫距离环：|dx|==r 或 |dz|==r；同环内所有首次出现的群系距离相同
@@ -455,11 +457,10 @@ public final class StLocator {
                     if (r != 0 && Math.abs(dx) != r && Math.abs(dz) != r) continue;
                     int x = origin.getX() + dx;
                     int z = origin.getZ() + dz;
-                    Holder<Biome> biome = worldgen.biomeSource.getNoiseBiome(
+                    Holder<Biome> biome = worldgen.biomeResolver.getNoiseBiome(
                         net.minecraft.core.QuartPos.fromBlock(x),
                         net.minecraft.core.QuartPos.fromBlock(sampleY),
-                        net.minecraft.core.QuartPos.fromBlock(z),
-                        sampler);
+                        net.minecraft.core.QuartPos.fromBlock(z));
                     Identifier id = biomeRegistry.getKey(biome.value());
                     if (id == null) continue;
                     boolean seen = false;

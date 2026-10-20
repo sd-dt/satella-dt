@@ -18,12 +18,16 @@ import net.minecraft.server.packs.resources.CloseableResourceManager;
 import net.minecraft.server.packs.resources.ResourceManager;
 import net.minecraft.world.level.WorldDataConfiguration;
 import net.minecraft.world.level.LevelHeightAccessor;
+import net.minecraft.world.level.ChunkPos;
+import net.minecraft.world.level.biome.BiomeResolver;
 import net.minecraft.world.level.biome.BiomeSource;
+import net.minecraft.world.level.biome.Climate;
 import net.minecraft.world.level.chunk.ChunkGeneratorStructureState;
 import net.minecraft.world.level.dimension.LevelStem;
 import net.minecraft.world.level.levelgen.NoiseBasedChunkGenerator;
 import net.minecraft.world.level.levelgen.NoiseGeneratorSettings;
 import net.minecraft.world.level.levelgen.RandomState;
+import net.minecraft.world.level.levelgen.densityfunction.SamplerContext;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplateManager;
 import net.minecraft.world.level.storage.LevelStorageSource;
 import net.minecraft.world.level.validation.DirectoryValidator;
@@ -46,6 +50,9 @@ public final class DatapackWorldgen implements AutoCloseable {
     public final NoiseBasedChunkGenerator noiseGenerator;
     public final RandomState randomState;
     public final BiomeSource biomeSource;
+    /** 26.3：气候采样器与群系解析器（结构生成上下文与直接采样都要用） */
+    public final Climate.Sampler climateSampler;
+    public final BiomeResolver biomeResolver;
     public final LevelHeightAccessor heightView;
     public final ChunkGeneratorStructureState structureState;
     public final StructureTemplateManager templateManager;
@@ -60,6 +67,8 @@ public final class DatapackWorldgen implements AutoCloseable {
         NoiseBasedChunkGenerator noiseGenerator,
         RandomState randomState,
         BiomeSource biomeSource,
+        Climate.Sampler climateSampler,
+        BiomeResolver biomeResolver,
         LevelHeightAccessor heightView,
         ChunkGeneratorStructureState structureState,
         StructureTemplateManager templateManager,
@@ -72,6 +81,8 @@ public final class DatapackWorldgen implements AutoCloseable {
         this.noiseGenerator = noiseGenerator;
         this.randomState = randomState;
         this.biomeSource = biomeSource;
+        this.climateSampler = climateSampler;
+        this.biomeResolver = biomeResolver;
         this.heightView = heightView;
         this.structureState = structureState;
         this.templateManager = templateManager;
@@ -168,10 +179,15 @@ public final class DatapackWorldgen implements AutoCloseable {
             }
 
             NoiseGeneratorSettings settings = generator.generatorSettings().value();
-            RandomState randomState = RandomState.create(settings, dimsAccess.lookupOrThrow(Registries.NOISE), seed);
+            // 26.3：create 参数顺序变为（噪声注册表, 种子, 设置）
+            RandomState randomState = RandomState.create(
+                dimsAccess.lookupOrThrow(Registries.NOISE), seed, settings);
+            Climate.Sampler climateSampler = randomState.createClimateSampler(SamplerContext.EMPTY_UNCACHED);
+            BiomeResolver biomeResolver = generator.getBiomeSource().createResolver(climateSampler);
             LevelHeightAccessor heightView = LevelHeightAccessor.create(settings.noiseSettings().minY(), settings.noiseSettings().height());
+            // 26.3：createForNormal 增加 origin（结构同心环计算的基准区块）
             ChunkGeneratorStructureState structureState = ChunkGeneratorStructureState.createForNormal(
-                randomState, seed, generator.getBiomeSource(), dimsAccess.lookupOrThrow(Registries.STRUCTURE_SET));
+                randomState, seed, ChunkPos.ZERO, generator.getBiomeSource(), dimsAccess.lookupOrThrow(Registries.STRUCTURE_SET));
             StructureTemplateManager templateManager = new StructureTemplateManager(
                 clientResources, session, dataFixer, dimsAccess.lookupOrThrow(Registries.BLOCK));
 
@@ -181,6 +197,7 @@ public final class DatapackWorldgen implements AutoCloseable {
             StLocator.LOGGER.info("启用的数据包: {}", String.join(", ", loadedPacks));
 
             return new DatapackWorldgen(seed, dimsAccess, generator, randomState, generator.getBiomeSource(),
+                climateSampler, biomeResolver,
                 heightView, structureState, templateManager, resources, loadedPacks, registryErrors);
         } catch (Exception e) {
             // 失败时释放已打开的资源包（zip 句柄）；模板会话由外部持久持有，不受影响

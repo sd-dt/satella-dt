@@ -4,11 +4,11 @@
 
 # satella-dt
 
-**A modified build based on `satella-mc26.2-1.0.0+mc26.2`**
+**A modified build based on `satella-mc26.2-1.0.0+mc26.2` · 26.2 / 26.3 lines**
 
 Auto trading · Auto crafting / stonecutting · Item protection · Better crossbow · Three tool-interaction modes · Offhand food · Enchantment glint · `/st` locator
 
-Current version: **1.0.0+mc26.2-dt261017a** | Minecraft: **26.2** + Fabric | License: **CC0-1.0** | Updated: 2026-10-17
+Current version: **1.0.0+mc26.3-dt261020a** | Minecraft: **26.3** + Fabric | License: **CC0-1.0** | Updated: 2026-10-20
 
 [中文说明](README.md) ｜ **English**
 
@@ -22,9 +22,15 @@ Repository: `https://github.com/sd-dt/satella-dt`
 
 **Satella** is a client-side Fabric utility mod (its internal mod id is still `satella`) that bundles automatic villager trading together with a set of automation helpers.
 
-This repository is a **modified build based on `satella-mc26.2-1.0.0+mc26.2`**. The source tree targets Minecraft **26.2** (since 26.x, official names *are* the runtime names — no mappings needed) and is built with Fabric Loom + JDK 25.
+This repository is a **modified build based on `satella-mc26.2-1.0.0+mc26.2`**. Since 26.x, official names *are* the runtime names, so no mappings are needed. The main branch currently targets **Minecraft 26.3** (`satella-26.3`), built with Fabric Loom + JDK 25; the 26.2 source is preserved in tag `v1.0.0-mc26.2-dt261017a`.
 
 > Everything is implemented client-side — **nothing has to be installed on the server**. Please follow the rules of the server you play on.
+
+> **2026-10-20: upgraded to Minecraft 26.3.** Feature parity with the 26.2 build. For 26.3 the glint
+> render layer (dual sampler), input (GLFW→SDL), worldgen/structure locating (`RandomState` /
+> `BiomeResolver` / `GenerationContext`), dynamic registries (`RegistryOps`) and the item-drop entry
+> point (`MultiPlayerGameMode.dropItem`) were ported. The 26.2 build remains available via
+> `v1.0.0-mc26.2-dt261017a`.
 
 ## Features
 
@@ -105,23 +111,23 @@ A client-side biome and structure locator (a port of the Datapack Map algorithm)
 
 ## Installation
 
-1. Minecraft **26.2** + Fabric Loader (≥ 0.19.3).
-2. Required: [Fabric API](https://modrinth.com/mod/fabric-api), [MaLiLib](https://modrinth.com/mod/malilib) (`>= 0.29.2- < 0.30.0-`, provides the config screen and hotkey framework).
+1. Fabric Loader (≥ 0.19.3) + the matching game version: **26.3** (main branch) or **26.2** (use the 26.2 release).
+2. Required: [Fabric API](https://modrinth.com/mod/fabric-api), [MaLiLib](https://modrinth.com/mod/malilib) (`0.30.x` for 26.3, `0.29.x` for 26.2; provides the config screen and hotkey framework).
 3. Optional: [Mod Menu](https://modrinth.com/mod/modmenu) (config entry point), [Item Scroller](https://modrinth.com/mod/item-scroller) / [Tweakeroo](https://modrinth.com/mod/tweakeroo) / Inventory Profiles Next (only affect the server quick-shulker compatibility option).
-4. Drop the newest **`satella-dt-*.jar`** from the Releases page (or `build\libs\satella-mc26.2-*.jar` if you built it yourself — not the `-sources` one) into `.minecraft/mods/`. **Only one satella build may be enabled at a time.**
+4. Drop the **`satella-dt-*.jar`** matching your game version from the Releases page (or `build\libs\satella-mc26.3-*.jar` / `satella-mc26.2-*.jar` if you built it yourself — not the `-sources` one) into `.minecraft/mods/`. **Only one satella build may be enabled at a time.**
 
 ## Building from source
 
-This repository is a standard Fabric Loom project (no mappings needed for 26.2):
+This repository is a standard Fabric Loom project (no mappings needed for 26.3):
 
 ```powershell
-# JDK 25 is required (26.2 uses class file version 69)
+# JDK 25 is required (26.3 uses class file version 69)
 $env:JAVA_HOME = '<path to your JDK 25>'
 .\gradlew.bat build --no-daemon --console=plain
-# output: build\libs\satella-mc26.2-<version>.jar
+# output: build\libs\satella-mc26.3-<version>.jar
 ```
 
-Dependency versions live in `gradle.properties`: `minecraft_version=26.2`, `loader_version=0.19.3`, `fabric_api_version=0.161.0+26.2`, `malilib_version=0.29.6`, `modmenu_version=20.0.1`.
+Dependency versions live in `gradle.properties`: `minecraft_version=26.3`, `loader_version=0.20.1`, `fabric_api_version=0.164.0+26.3`, `malilib_version=0.30.2`, `modmenu_version=21.0.0`, `itemscroller_version=0.33.1`.
 The Gradle wrapper points at the Tencent mirror (`mirrors.cloud.tencent.com`); the first build downloads Gradle 9.6 automatically.
 
 ## Configuration

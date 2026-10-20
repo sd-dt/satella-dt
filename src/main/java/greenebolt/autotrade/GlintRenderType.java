@@ -2,27 +2,30 @@ package greenebolt.autotrade;
 
 import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.client.renderer.rendertype.LayeringTransform;
-import net.minecraft.client.renderer.rendertype.OutputTarget;
 import net.minecraft.client.renderer.rendertype.RenderSetup;
 import net.minecraft.client.renderer.rendertype.RenderType;
 import net.minecraft.client.renderer.rendertype.RenderTypes;
 import net.minecraft.client.renderer.rendertype.TextureTransform;
 import net.minecraft.resources.Identifier;
 
-import java.util.EnumMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * 附魔光效渲染层（26.2 官方名版本，2026-10-11 起以官方新版 Satella 的实现为蓝本同步）。
+ * 附魔光效渲染层（26.3 官方名版本）。
  *
- * <p>每种「颜色」（{@link GlintPreset}）对应一套独立 {@link RenderType}，纹理为
- * {@code satella:textures/misc/glint_<颜色>.png}（与蓝本一致的扁平目录；蓝本的这套贴图
- * 与旧版「默认形态」贴图逐字节相同，旧「光效形态」二选一随本次同步一并移除）。
+ * <p>26.3 起原版把「光效层」改成<b>双采样器</b>结构：{@code Sampler0} 是物品/盔甲
+ * 所在图集（{@code minecraft:blocks} / {@code minecraft:items} / 盔甲贴图），
+ * {@code GlintSampler} 才是附魔光效贴图，光效 RenderType 在模型烘焙时按图集
+ * 一次性生成（{@code Sheets} / {@code EquipmentLayerRenderer}），不再有 26.2 的
+ * 无参 {@code RenderTypes.glint()}。因此本版改为：<b>保持原版 Sampler0 不变</b>，
+ * 只把 {@code GlintSampler} 换成 {@code satella:textures/misc/glint_<颜色>.png}，
+ * 管线、变换、分层全部照抄原版对应类型。
  *
- * <p>三套管线与蓝本一一对应：普通光效 / 透明光效（物品实体目标）/ 盔甲光效
- * （{@code ARMOR_ENTITY_GLINT_TEXTURING} 变换 + {@code VIEW_OFFSET_Z_LAYERING} 分层）。
- * 盔甲那套自本版起重新注册（{@code EquipmentLayerRendererMixin}，与蓝本一致）：
- * 「附魔显示颜色」选中颜色时物品与盔甲一起变色；默认（NONE）时两处都不接管。
+ * <p>三套管线：普通物品（{@code ITEM_CUTOUT_GLINT}）、透明物品
+ * （{@code ITEM_TRANSLUCENT_GLINT} + OIT）、盔甲
+ * （{@code ARMOR_CUTOUT_NO_CULL_GLINT} + {@code ARMOR_ENTITY_GLINT_TEXTURING}
+ * + {@code VIEW_OFFSET_Z_LAYERING}）。
  *
  * <p><b>不接管的情形</b>（直接返回原版 {@code RenderType}，不创建任何自定义渲染层）：
  * <ol>
@@ -31,28 +34,31 @@ import java.util.Map;
  *       或材质包替换过原版附魔光效贴图。此时本模组让位，避免抢优先级。</li>
  * </ol>
  *
- * <p>渲染层表保持<b>惰性构建</b>：默认配置下（不接管）整套渲染层根本不会创建。
+ * <p>渲染层按「颜色 + 种类 + 图集」惰性构建并缓存：默认配置下（不接管）根本不创建。
  */
 public final class GlintRenderType {
 
-    /** 三套管线：普通光效 / 透明光效 / 盔甲光效。 */
-    private enum Kind { GLINT, TRANSLUCENT, ARMOR }
+    /** 三套管线：普通物品光效 / 透明物品光效 / 盔甲光效。 */
+    private enum Kind { ITEM_CUTOUT, ITEM_TRANSLUCENT, ARMOR }
+
+    private static final Map<String, RenderType> CACHE = new ConcurrentHashMap<>();
 
     private GlintRenderType() {}
 
-    public static RenderType glint() {
-        return select(Kind.GLINT, RenderTypes.glint());
+    /** 物品光效：{@code atlasTexture} 为原版传入的图集位置（items 或 blocks）。 */
+    public static RenderType forItem(Identifier atlasTexture, boolean translucent) {
+        RenderType vanilla = translucent
+                ? RenderTypes.itemTranslucentGlint(atlasTexture)
+                : RenderTypes.itemCutoutGlint(atlasTexture);
+        return select(translucent ? Kind.ITEM_TRANSLUCENT : Kind.ITEM_CUTOUT, atlasTexture, vanilla);
     }
 
-    public static RenderType translucent() {
-        return select(Kind.TRANSLUCENT, RenderTypes.glintTranslucent());
+    /** 盔甲光效：{@code armorTexture} 为原版传入的盔甲层贴图。 */
+    public static RenderType forArmor(Identifier armorTexture) {
+        return select(Kind.ARMOR, armorTexture, RenderTypes.armorCutoutNoCullGlint(armorTexture));
     }
 
-    public static RenderType armorGlint() {
-        return select(Kind.ARMOR, RenderTypes.armorEntityGlint());
-    }
-
-    private static RenderType select(Kind kind, RenderType vanilla) {
+    private static RenderType select(Kind kind, Identifier texture, RenderType vanilla) {
         // ① 关闭（默认，NONE = 原版光效不接管）或外部接管（光影/材质包）→ 让位，返回原版
         if (GlintCompat.shouldYield()) {
             return vanilla;
@@ -61,12 +67,8 @@ public final class GlintRenderType {
         if (preset == null || preset.isNone()) {
             return vanilla;
         }
-        Map<Kind, Map<GlintPreset, RenderType>> tables = Tables.ALL;
-        if (tables == null) {
-            return vanilla;
-        }
-        Map<GlintPreset, RenderType> layers = tables.get(kind);
-        return layers == null ? vanilla : layers.getOrDefault(preset, vanilla);
+        String key = preset.getStringValue() + '|' + kind.name() + '|' + texture;
+        return CACHE.computeIfAbsent(key, ignored -> build(kind, preset, texture));
     }
 
     /** 读取当前颜色；配置尚未就绪时按「不接管」处理。 */
@@ -82,52 +84,40 @@ public final class GlintRenderType {
         return GlintPreset.NONE;
     }
 
-    /** 首次访问才构建渲染层表（类加载惰性）。 */
-    private static final class Tables {
-        static final Map<Kind, Map<GlintPreset, RenderType>> ALL = buildAll();
-
-        private static Map<Kind, Map<GlintPreset, RenderType>> buildAll() {
-            Map<Kind, Map<GlintPreset, RenderType>> all = new EnumMap<>(Kind.class);
-            for (Kind kind : Kind.values()) {
-                Map<GlintPreset, RenderType> byPreset = new EnumMap<>(GlintPreset.class);
-                for (GlintPreset preset : GlintPreset.values()) {
-                    // NONE = 不接管，永远不参与渲染层表（原版光效直接返回）
-                    if (preset.isNone()) {
-                        continue;
-                    }
-                    byPreset.put(preset, create(kind, preset));
-                }
-                all.put(kind, byPreset);
-            }
-            return all;
-        }
-
-        private static RenderType create(Kind kind, GlintPreset preset) {
-            return switch (kind) {
-                case GLINT -> build("glint_" + preset.getStringValue(), preset,
-                        TextureTransform.GLINT_TEXTURING, null);
-                case TRANSLUCENT -> build("glint_translucent_" + preset.getStringValue(), preset,
-                        TextureTransform.GLINT_TEXTURING, OutputTarget.ITEM_ENTITY_TARGET);
-                case ARMOR -> build("armor_glint_" + preset.getStringValue(), preset,
-                        TextureTransform.ARMOR_ENTITY_GLINT_TEXTURING, null);
-            };
-        }
-    }
-
-    /** 与蓝本一致：GLINT 管线 + 自定义贴图；盔甲用 ARMOR 变换并叠加分层。 */
-    private static RenderType build(String name, GlintPreset preset,
-                                    TextureTransform transform, OutputTarget target) {
-        Identifier texture = Identifier.fromNamespaceAndPath("satella",
+    /** 与原版对应类型逐项对齐，只替换 GlintSampler。 */
+    private static RenderType build(Kind kind, GlintPreset preset, Identifier texture) {
+        Identifier glintTexture = Identifier.fromNamespaceAndPath("satella",
                 "textures/misc/" + preset.textureName() + ".png");
-        RenderSetup.RenderSetupBuilder builder = RenderSetup.builder(RenderPipelines.GLINT)
-                .withTexture("Sampler0", texture)
-                .setTextureTransform(transform);
-        if (transform == TextureTransform.ARMOR_ENTITY_GLINT_TEXTURING) {
-            builder.setLayeringTransform(LayeringTransform.VIEW_OFFSET_Z_LAYERING);
-        }
-        if (target != null) {
-            builder.setOutputTarget(target);
-        }
-        return greenebolt.autotrade.mixin.RenderTypeInvoker.autoTrade$create(name, builder.createRenderSetup());
+        RenderSetup.RenderSetupBuilder builder = switch (kind) {
+            case ITEM_CUTOUT -> RenderSetup.builder(RenderPipelines.ITEM_CUTOUT_GLINT)
+                    .withTexture("Sampler0", texture)
+                    .withTexture("GlintSampler", glintTexture)
+                    .setTextureTransform(TextureTransform.GLINT_TEXTURING)
+                    .useLightmap()
+                    .useOverlay()
+                    .affectsCrumbling()
+                    .setOutline(RenderSetup.OutlineProperty.AFFECTS_OUTLINE);
+            case ITEM_TRANSLUCENT -> RenderSetup.builder(RenderPipelines.ITEM_TRANSLUCENT_GLINT)
+                    .setOitPipelines(RenderPipelines.OIT_ITEM_GLINT)
+                    .withTexture("Sampler0", texture)
+                    .withTexture("GlintSampler", glintTexture)
+                    .setTextureTransform(TextureTransform.GLINT_TEXTURING)
+                    .useLightmap()
+                    .useOverlay()
+                    .affectsCrumbling()
+                    .sortOnUpload()
+                    .setOutline(RenderSetup.OutlineProperty.AFFECTS_OUTLINE);
+            case ARMOR -> RenderSetup.builder(RenderPipelines.ARMOR_CUTOUT_NO_CULL_GLINT)
+                    .withTexture("Sampler0", texture)
+                    .withTexture("GlintSampler", glintTexture)
+                    .setTextureTransform(TextureTransform.ARMOR_ENTITY_GLINT_TEXTURING)
+                    .useLightmap()
+                    .useOverlay()
+                    .setLayeringTransform(LayeringTransform.VIEW_OFFSET_Z_LAYERING)
+                    .affectsCrumbling()
+                    .setOutline(RenderSetup.OutlineProperty.AFFECTS_OUTLINE);
+        };
+        return greenebolt.autotrade.mixin.RenderTypeInvoker.autoTrade$create(
+                "satella_" + kind.name().toLowerCase() + "_glint", builder.createRenderSetup());
     }
 }
